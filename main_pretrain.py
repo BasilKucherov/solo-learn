@@ -19,6 +19,7 @@
 
 import inspect
 import os
+import warnings
 
 import hydra
 import torch
@@ -40,6 +41,27 @@ from solo.methods import METHODS
 from solo.utils.auto_resumer import AutoResumer
 from solo.utils.checkpointer import Checkpointer
 from solo.utils.misc import make_contiguous, omegaconf_select
+
+warnings.filterwarnings(
+    "ignore",
+    message=r"Importing from timm\.models.* is deprecated",
+    category=FutureWarning,
+)
+warnings.filterwarnings(
+    "ignore",
+    message=r"Importing from timm\.optim.* is deprecated",
+    category=FutureWarning,
+)
+warnings.filterwarnings(
+    "ignore",
+    message=r"Overwriting .* in registry with solo\.backbones.*",
+    category=UserWarning,
+)
+warnings.filterwarnings(
+    "ignore",
+    message=r"`torch\.cuda\.amp\.custom_fwd",
+    category=FutureWarning,
+)
 
 try:
     from solo.data.dali_dataloader import PretrainDALIDataModule, build_transform_pipeline_dali
@@ -78,9 +100,9 @@ def main(cfg: DictConfig):
         model = model.to(memory_format=torch.channels_last)
 
     # validation dataloader for when it is available
-    if cfg.data.dataset == "custom" and (cfg.data.no_labels or cfg.data.val_path is None):
-        val_loader = None
-    elif cfg.data.dataset in ["imagenet100", "imagenet"] and cfg.data.val_path is None:
+    if (cfg.data.dataset == "custom" and (cfg.data.no_labels or cfg.data.val_path is None)) or (
+        cfg.data.dataset in ["imagenet100", "imagenet"] and cfg.data.val_path is None
+    ):
         val_loader = None
     else:
         if cfg.data.format == "dali":
@@ -221,9 +243,9 @@ def main(cfg: DictConfig):
             "logger": wandb_logger if cfg.wandb.enabled else None,
             "callbacks": callbacks,
             "enable_checkpointing": False,
-            "strategy": DDPStrategy(find_unused_parameters=False)
-            if cfg.strategy == "ddp"
-            else cfg.strategy,
+            "strategy": (
+                DDPStrategy(find_unused_parameters=False) if cfg.strategy == "ddp" else cfg.strategy
+            ),
         }
     )
     trainer = Trainer(**trainer_kwargs)
