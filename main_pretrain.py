@@ -245,7 +245,7 @@ def main(cfg: DictConfig):
     trainer_kwargs = {name: trainer_kwargs[name] for name in valid_kwargs if name in trainer_kwargs}
     trainer_kwargs.update(
         {
-            "logger": wandb_logger if cfg.wandb.enabled else None,
+            "logger": wandb_logger if cfg.wandb.enabled else trainer_kwargs.get("logger"),
             "callbacks": callbacks,
             "enable_checkpointing": False,
             "strategy": (
